@@ -20,6 +20,7 @@ from app.schemas.presentation import (
     TodosRequest, TodosResponse,
     ImproveRequest, ImproveResponse,
     DiagramRequest,
+    RepoFilesRequest,
 )
 from app.services import llm_service, pptx_service
 from app.services.github_service import (
@@ -28,6 +29,7 @@ from app.services.github_service import (
     get_pull_requests, prs_to_text,
     fetch_releases, releases_to_text,
     fetch_todos, todos_to_text,
+    fetch_repo_files, repo_files_to_text,
 )
 
 router = APIRouter()
@@ -282,6 +284,37 @@ async def generate_from_todos(body: TodosRequest):
         presentation_id=pid, download_url=_dl(filename),
     )
 
+
+
+# ── US7 — Arquivos soltos do repositório ─────────────────────────────────────
+
+@router.post("/generate/repo-files", response_model=PresentationResponse,
+             summary="US7 — Gerar slides técnicos a partir de arquivos soltos no repositório")
+async def generate_from_repo_files(body: RepoFilesRequest):
+    try:
+        files = await fetch_repo_files(body.repo, body.branch, body.extensions, body.max_files)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Erro GitHub: {e}")
+
+    if not files:
+        raise HTTPException(status_code=404, detail="Nenhum arquivo encontrado com as extensões informadas.")
+
+    try:
+        title, slides = llm_service.generate_slides_from_text(
+            content=repo_files_to_text(files),
+            presentation_type=body.presentation_type.value,
+            tone=body.tone,
+            num_slides=body.num_slides,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro LLM: {e}")
+
+    _, filename = pptx_service.export_to_pptx(slides, title, body.template_name)
+    pid = _pid()
+    return PresentationResponse(
+        presentation_id=pid, title=title, slides=slides,
+        download_url=_dl(filename), share_url=_share(pid),
+    )
 
 # ── US21 — Diagrama de arquitetura ──────────────────────────────────────────
 

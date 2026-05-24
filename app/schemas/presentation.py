@@ -191,6 +191,22 @@ class ReleaseItem(BaseModel):
     body:    Optional[str] = None
 
 
+
+# ── US7 — Arquivos soltos do repositório ─────────────────────────────────────
+
+class RepoFilesRequest(BaseModel):
+    repo:          str           = Field(..., description="owner/repo")
+    branch:        str           = "main"
+    extensions:    List[str]     = Field(
+        default=[".md", ".txt", ".rst", ".yaml", ".yml", ".json"],
+        description="Extensões dos arquivos a processar"
+    )
+    max_files:     int           = Field(default=10, ge=1, le=30)
+    presentation_type: PresentationTypeEnum = PresentationTypeEnum.generic
+    tone:          ToneEnum      = ToneEnum.technical
+    num_slides:    int           = Field(default=8, ge=3, le=20)
+    template_name: Optional[str] = "default"
+
 # ── US21 — Diagrama de arquitetura ──────────────────────────────────────────
 
 class DiagramRequest(BaseModel):

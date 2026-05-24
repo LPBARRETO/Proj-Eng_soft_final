@@ -196,6 +196,60 @@ def todos_to_text(todos: List[TodoItem]) -> str:
 
 # ── US19 — Tags / Releases ────────────────────────────────────────────────────
 
+
+# ── US7 — Arquivos soltos do repositório ─────────────────────────────────────
+
+async def fetch_repo_files(
+    repo: str,
+    branch: str = "main",
+    extensions: Optional[List[str]] = None,
+    max_files: int = 10,
+) -> List[dict]:
+    """US7 — Busca arquivos soltos (não código) no repositório e retorna lista de {path, content}."""
+    if extensions is None:
+        extensions = [".md", ".txt", ".rst", ".yaml", ".yml", ".json"]
+
+    owner, name = _split(repo)
+
+    async with httpx.AsyncClient(timeout=30) as c:
+        r = await c.get(
+            f"{GITHUB_API}/repos/{owner}/{name}/git/trees/{branch}",
+            headers=_headers(),
+            params={"recursive": "1"},
+        )
+        r.raise_for_status()
+        tree = r.json().get("tree", [])
+
+    files = [
+        item for item in tree
+        if item["type"] == "blob"
+        and any(item["path"].endswith(ext) for ext in extensions)
+    ][:max_files]
+
+    result: List[dict] = []
+
+    async with httpx.AsyncClient(timeout=30) as c:
+        for file in files:
+            try:
+                r = await c.get(file["url"], headers=_headers())
+                if r.status_code != 200:
+                    continue
+                content_decoded = base64.b64decode(
+                    r.json().get("content", "")
+                ).decode("utf-8", errors="ignore")
+                result.append({"path": file["path"], "content": content_decoded[:3000]})
+            except Exception:
+                continue
+
+    return result
+
+
+def repo_files_to_text(files: List[dict]) -> str:
+    if not files:
+        return "Nenhum arquivo encontrado."
+    parts = [f"## {f['path']}\n{f['content']}" for f in files]
+    return "\n\n---\n\n".join(parts)
+
 async def fetch_releases(repo: str) -> List[dict]:
     """US19 — Retorna releases publicadas (ou tags se não houver releases)."""
     owner, name = _split(repo)
