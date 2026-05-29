@@ -7,8 +7,12 @@ interface StatsCardProps {
 
 export function StatsCard({ label, value, icon, iconBg }: StatsCardProps) {
   return (
-    <div className="bg-[#13151d] border border-[#1f2235] rounded-xl p-4 flex flex-col gap-3">
-      <div className={`inline-flex items-center justify-center h-9 w-9 rounded-lg ${iconBg}`}>
+    <div className="bg-transparent rounded-xl p-5 flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-zinc-400">{label}</p>
+        <p className="text-3xl font-bold text-white mt-1">{value}</p>
+      </div>
+      <div className={`h-12 w-12 rounded-xl ${iconBg} flex items-center justify-center`}>
         {icon}
       </div>
       <div>
