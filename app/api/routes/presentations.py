@@ -172,7 +172,20 @@ async def generate_changelog(body: ChangelogRequest):
     raw_slides = data.get("slides", [])
 
     from app.schemas.presentation import SlideContent
-    slides_obj = [SlideContent(**s) for s in raw_slides]
+    slides_obj = []
+    for s in raw_slides:
+        # Se a IA enviou o dicionário perfeitinho (O cenário ideal)
+        if isinstance(s, dict):
+            slides_obj.append(SlideContent(**s))
+
+        # Se a IA enviou apenas um texto solto (O erro que você tomou)
+        elif isinstance(s, str):
+            # Criamos um slide genérico "salva-vidas" e colocamos o texto como um bullet point
+            slides_obj.append(SlideContent(title="Tópico", bullets=[s]))
+
+        # Se a IA mandou algo completamente bizarro (ignora para não quebrar)
+        else:
+            continue
     entries = [ChangelogEntry(**e) for e in data.get("entries", [])]
 
     _, filename = pptx_service.export_to_pptx(slides_obj, title, body.template_name)
